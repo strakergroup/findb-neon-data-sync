@@ -1,0 +1,61 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  name: build-pod
+  labels:
+    app: container-builder
+spec:
+  containers:
+  - name: container-builder
+    image: strakertranslations/tools-container_buildah:latest
+    imagePullPolicy: Always
+    securityContext:
+      privileged: true
+      runAsUser: 0
+    tty: true
+        '''
+    }
+  }
+  stages {
+    stage('git tasks') {
+      steps {
+        container('container-builder') {
+          sh(script: """
+echo "${DOCKER_PASSWORD}" | buildah login -u strakertranslations --password-stdin docker.io
+GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone --branch ${BRANCH} --single-branch git@github.com:$REPO /root/container-build/${APPLICATION}/
+          """)
+        }
+      }
+    }
+    stage('build container') {
+      steps {
+        container('container-builder') {
+          sh(script: '''
+cd /root/container-build/${APPLICATION}/
+GITTAG=$(git rev-parse --short=7 HEAD)
+echo "Building with Git SHA: $GITTAG"
+buildah build --no-cache -t strakertech/${APPLICATION}:$TAG-latest -t strakertech/${APPLICATION}:$TAG-$GITTAG .
+echo $GITTAG > /tmp/gittag.txt
+          ''')
+        }
+      }
+    }
+    stage('push container') {
+      steps {
+        container('container-builder') {
+          sh(script: '''
+GITTAG=$(cat /tmp/gittag.txt)
+echo "Pushing with Git SHA: $GITTAG"
+buildah push --format docker strakertech/${APPLICATION}:$TAG-latest
+buildah push --format docker strakertech/${APPLICATION}:$TAG-$GITTAG
+echo "findb-neon-data-sync container built and pushed to DockerHub."
+          ''')
+        }
+      }
+    }
+  }
+}
