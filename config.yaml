@@ -1,0 +1,45 @@
+tables:
+  - name: "ai_token_usage"
+    source_schema: "bi_data"
+    target_schema: "public"
+    primary_key: ["credit_transactions_uuid"]
+    incremental_column: "ai_token_usage_modified"
+    incremental_type: "timestamp"
+    batch_size: 1000
+    enabled: true
+
+  - name: "clients"
+    source_schema: "bi_data"
+    target_schema: "public"
+    primary_key: ["client_uuid"]
+    incremental_column: "client_modified"
+    incremental_type: "timestamp"
+    batch_size: 1000
+    enabled: true
+
+  - name: "groups"
+    source_schema: "bi_data"
+    target_schema: "public"
+    primary_key: ["group_uuid"]
+    incremental_column: "group_modified"
+    incremental_type: "timestamp"
+    batch_size: 1000
+    enabled: true
+
+  - name: "straker_groups"
+    source_schema: "bi_data"
+    target_schema: "public"
+    primary_key: ["straker_group_uuid"]
+    incremental_column: "straker_group_modified"
+    incremental_type: "timestamp"
+    batch_size: 1000
+    enabled: true
+
+  - name: "verify_organizations"
+    source_schema: "bi_data"
+    target_schema: "public"
+    primary_key: ["verify_organization_uuid"]
+    incremental_column: "verify_organization_modified"
+    incremental_type: "timestamp"
+    batch_size: 1000
+    enabled: true

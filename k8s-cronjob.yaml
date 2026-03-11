@@ -1,0 +1,69 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: job-findb-neon-data-sync
+  namespace: mgmt-jobs
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  suspend: false
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      template:
+        spec:
+          containers:
+          - name: findb-neon-data-sync
+            image: docker.io/strakertech/findb-neon-data-sync:prod-latest
+            imagePullPolicy: Always
+            resources:
+              limits:
+                memory: "1Gi"
+                cpu: "1"
+              requests:
+                memory: "512Mi"
+                cpu: "0.5"
+            volumeMounts:
+            - name: env-config
+              readOnly: true
+              mountPath: /app/.env
+              subPath: .env
+            - name: sync-config
+              readOnly: true
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+            env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: SYNC_CONFIG_PATH
+              value: "/app/config.yaml"
+          securityContext:
+            runAsUser: 1001
+            runAsGroup: 33
+            fsGroup: 33
+          volumes:
+          - name: env-config
+            secret:
+              secretName: findb-neon-data-sync-env-config
+              items:
+              - key: .env
+                path: .env
+          - name: sync-config
+            configMap:
+              name: findb-neon-data-sync-table-config
+              items:
+              - key: config.yaml
+                path: config.yaml
+          restartPolicy: Never
+---
+# Create the secret from your .env file:
+#   kubectl create secret generic findb-neon-data-sync-env-config \
+#     --from-file=.env=secrets/.env --namespace=mgmt-jobs
+#
+# Create the configmap from config.yaml:
+#   kubectl create configmap findb-neon-data-sync-table-config \
+#     --from-file=config.yaml=config.yaml --namespace=mgmt-jobs
